@@ -1,3 +1,6 @@
+mkpak
+unpak
 *.exe
 *.pak
+*.PAK
 pak*/

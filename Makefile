@@ -1,8 +1,8 @@
-CFLAGS = -Wall -Wextra -Wpedantic --std=c99
-all: pak
+CFLAGS = -Wall -Wextra -Wpedantic --std=c99 -g3
+all: mkpak unpak 
 
 clean:
-	rm -f pak
+	rm -f mkpak unpak
 
 clean_win:
-	del pak.exe
+	del mkpak.exe unpak.exe
