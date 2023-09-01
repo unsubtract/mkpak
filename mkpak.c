@@ -11,46 +11,62 @@
 
 static void fail(const char* str);
 
+static FILE *pakfile = NULL;
+static char full_filename[512];
+static size_t filename_stack[256];
+static size_t filename_sp = 0;
+
 static void fail(const char* str) {
     perror(str);
     exit(EXIT_FAILURE);
 }
 
-int enter_directory(char *path) {
-    ;
-}
-
-int main(/*int argc, char *argv[]*/) {
-    DIR *indir = opendir("./pak0");
-    if (indir == NULL) fail("failed to open folder");
-    FILE *pakfile = fopen("out.pak", "wb");
-    if (pakfile == NULL) fail("failed to open output file");
+void enter_directory(char *path) {
+    DIR *indir = opendir(path);
     struct dirent *infe = NULL;
     FILE *infd = NULL;
-    char full_filename[512];
-
-    pak_header h = {.magic = {'P', 'A', 'C', 'K'}};
-    file_header fh;
-    fseek(pakfile, PAK_HEADER_SZ, SEEK_SET);
 
     while ((infe = readdir(indir)) != NULL) {
         if (!strncmp(infe->d_name, ".", 2)) continue;
         if (!strncmp(infe->d_name, "..", 3)) continue;
-        strncpy(full_filename, "./pak0/", 256);
-        strncat(full_filename, infe->d_name, 256);
-        if (infe->d_type == DT_DIR) continue;
-        infd = fopen(full_filename, "r");
-        if (infd == NULL) {
-            fprintf(stderr, "failed to open %s: %s\n", full_filename, strerror(errno));
-        } else {
-            printf("opened %s\n", full_filename);
-            int c;
-            size_t fsize = 0;
-            while ((c = getc(infd)) != EOF) {
-                putc(c, pakfile);
-                ++fsize;
+        if (infe->d_type == DT_DIR) strcat(infe->d_name, "/");
+        strncpy(full_filename + filename_stack[filename_sp - 1], infe->d_name, 256);
+        //printf("%lu\n", filename_stack[filename_sp]);
+        filename_stack[filename_sp++] = strlen(full_filename);
+        if (infe->d_type == DT_DIR) enter_directory(full_filename);
+        else {
+            infd = fopen(full_filename, "r");
+            if (infd == NULL) {
+                fprintf(stderr, "failed to open %s: %s\n", full_filename, strerror(errno));
+            } else {
+                printf("opened %s\n", full_filename);
+                int c;
+                size_t fsize = 0;
+                while ((c = getc(infd)) != EOF) {
+                    putc(c, pakfile);
+                    ++fsize;
+                }
+                fclose(infd);
             }
-            fclose(infd);
         }
+        filename_sp--;
     }
+    closedir(indir);
+}
+
+int main(/*int argc, char *argv[]*/) {
+    pakfile = fopen("out.pak", "wb");
+    if (pakfile == NULL) fail("failed to open output file");
+
+    strncpy(full_filename, "./pak0/", 256);
+    filename_stack[filename_sp++] = strlen(full_filename);
+
+    //pak_header h = {.magic = {'P', 'A', 'C', 'K'}};
+    //file_header fh;
+    fseek(pakfile, PAK_HEADER_SZ, SEEK_SET);
+
+    enter_directory("./pak0/");
+
+    fclose(pakfile);
+    return EXIT_SUCCESS;
 }

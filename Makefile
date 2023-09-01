@@ -1,4 +1,4 @@
-CFLAGS = -Wall -Wextra -Wpedantic --std=c99 -g3
+CFLAGS = -Wall -Wextra -Wpedantic --std=c99 -g3 -fsanitize=address
 all: mkpak unpak 
 
 clean:

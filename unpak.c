@@ -51,7 +51,7 @@ int main(/*int argc, char *argv[]*/) {
             fseek(pakfile, fh->offset, SEEK_SET);
             int c = 0;
             size_t len = 0;
-            while (c != EOF && len < (uint32_t)fh->size) {
+            while (c != EOF && len < (size_t)fh->size) {
                 c = getc(pakfile);
                 putc(c, outfile);
                 ++len;
