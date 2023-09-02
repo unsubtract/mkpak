@@ -113,12 +113,12 @@ int main(/*int argc, char *argv[]*/) {
     size_t file_count = count_directory("./pak1/");
 
     h.offset = PAK_HEADER_SZ;
-    h.size = PAK_HEADER_SZ + file_count*FILE_HEADER_SZ;
+    h.size = file_count*FILE_HEADER_SZ;
 
     fwrite(&h, PAK_HEADER_SZ, 1, pakfile);
 
     pakptr_header = h.offset;
-    pakptr_data = h.size;
+    pakptr_data = PAK_HEADER_SZ+h.size;
 
     enter_directory("./pak1/");
 
