@@ -1,5 +1,6 @@
 mkpak
 unpak
+qunpak
 *.exe
 *.pak
 *.PAK
