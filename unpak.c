@@ -21,7 +21,7 @@ static void fail(const char* str) {
 
 int main(/*int argc, char *argv[]*/) {
     pak_header h = {.magic = {'P', 'A', 'C', 'K'}};
-    FILE *pakfile = fopen("PAK0.PAK", "rb");
+    FILE *pakfile = fopen("../out.pak", "rb");
     if (pakfile == NULL) {
         perror("could not open file");
         exit(EXIT_FAILURE);
@@ -44,7 +44,7 @@ int main(/*int argc, char *argv[]*/) {
 
         file_header* fh = (file_header*)&buffer[0];
         //printf("filename: %s\n  filesize: %i\n", fh->name, fh->size);
-        if (mkdir((char*)fh->name, 0755) < 0) perror("mkdir");
+        //if (mkdir((char*)fh->name, 0755) < 0) perror("mkdir");
         FILE *outfile = fopen((char*)&fh->name, "w");
         if (outfile == NULL) perror((char*)fh->name);
         else {
