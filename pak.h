@@ -1,3 +1,5 @@
+/* pak.h - Quake PAK archive format structs
+ * by unsubtract, MIT license */
 #ifndef PAK_H_
 #define PAK_H_
 #include <stdint.h>

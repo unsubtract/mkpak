@@ -1,36 +1,21 @@
-#ifdef __WIN32__
-#include <windows.h>
-#else
+/* mkpak.c - make Quake PAK archives
+ * by unsubtract, MIT license */
 #define _DEFAULT_SOURCE /* needed for DT_DIR */
 #include <dirent.h>
-#endif
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <errno.h>
 #include <string.h>
 
 #include "pak.h"
 
-static size_t enter_directory(char* path, int should_write);
-
 static FILE *pakfile = NULL;
 static size_t pakptr_header = 0;
 static size_t pakptr_data = 0;
 
-static size_t enter_directory(char* path, int should_write) {
+static size_t recurse_directory(char path[4096], size_t p, size_t ap, char w) {
     size_t count = 0;
-    static char current_path[4096] = {0};
-    static size_t path_stack[2048];
-    static size_t path_sp = 0;
-    static size_t archived_path_p = 0;
-
-    if (path_sp == 0) {
-        strncpy(current_path, path, 2047);
-        strcat(current_path, "/");
-        path_stack[path_sp++] = archived_path_p = strlen(current_path);
-    }
 
     FILE *fd;
     struct dirent *ent;
@@ -43,23 +28,24 @@ static size_t enter_directory(char* path, int should_write) {
     while ((ent = readdir(dp)) != NULL) {
         if (!strncmp(ent->d_name, ".", 2)) continue;
         if (!strncmp(ent->d_name, "..", 3)) continue;
+        strncpy(path + p, ent->d_name, 256);
 
-        if (ent->d_type == DT_DIR) strcat(ent->d_name, "/");
-        strncpy(current_path + path_stack[path_sp - 1], ent->d_name, 256);
-        path_stack[path_sp++] = strlen(current_path);
-        if (ent->d_type == DT_DIR) count += enter_directory(current_path, should_write);
+        if (ent->d_type == DT_DIR) {
+            strcat(path, "/");
+            count += recurse_directory(path, strlen(path), ap, w);
+        }
 
         else {
-            if (strlen(current_path + archived_path_p) > sizeof(((file_header*)0)->name) - 1) {
-                fprintf(stderr, "file %s has too long of a path name\n", current_path + archived_path_p);
+            if (strlen(path + ap) > sizeof(((file_header*)0)->name) - 1) {
+                fprintf(stderr, "file %s has too long of a path name\n", path + ap);
                 exit(EXIT_FAILURE);
             }
             ++count;
 
-            if (should_write) {
-                fd = fopen(current_path, "r");
+            if (w) {
+                fd = fopen(path, "r");
                 if (fd == NULL) {
-                    fprintf(stderr, "failed to open file %s: %s\nAborting...", current_path, strerror(errno));
+                    fprintf(stderr, "failed to open file %s: %s\nAborting...", path, strerror(errno));
                     exit(EXIT_FAILURE);
                 } else {
                     file_header fh;
@@ -74,29 +60,36 @@ static size_t enter_directory(char* path, int should_write) {
                     fclose(fd);
                     pakptr_data += len;
                     fh.size = len;
-                    strncpy((char*)fh.name, current_path + archived_path_p, sizeof(fh.name));
+                    strncpy((char*)fh.name, path + ap, sizeof(fh.name));
                     fseek(pakfile, pakptr_header, SEEK_SET);
                     fwrite(&fh, FILE_HEADER_SZ, 1, pakfile);
                     pakptr_header += FILE_HEADER_SZ;
                 }
             }
         }
-        --path_sp;
     }
     closedir(dp);
     return count;
 }
 
+static size_t enter_directory(char* path, char buf[4096], char should_write) {
+    strncpy(buf, path, 2048);
+    strcat(buf, "/");
+
+    return recurse_directory(buf, strlen(buf), strlen(buf), should_write);
+}
+
 int main(int argc, char *argv[]) {
+    char buf[4096];
     if (argc != 3) {
         fprintf(stderr, "usage: %s [input directory] [output file]\n"\
-                "The input directory will be the root directory of the output file.\n",
+                "The input directory will become the output file's root directory.\n",
                 argv[0]);
         exit(EXIT_FAILURE);
     }
 
     pak_header h = {.magic = {'P', 'A', 'C', 'K'}, .offset = PAK_HEADER_SZ};
-    h.size = enter_directory(argv[1], 0) * FILE_HEADER_SZ;
+    h.size = enter_directory(argv[1], buf, 0) * FILE_HEADER_SZ;
 
     pakfile = fopen(argv[2], "wb");
     if (pakfile == NULL) {
@@ -109,7 +102,7 @@ int main(int argc, char *argv[]) {
     pakptr_header = h.offset;
     pakptr_data = PAK_HEADER_SZ+h.size;
 
-    enter_directory(argv[1], 1);
+    enter_directory(argv[1], buf, 1);
 
     fclose(pakfile);
     return EXIT_SUCCESS;
