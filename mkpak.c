@@ -1,11 +1,25 @@
 /* mkpak.c - make Quake PAK archives
  * by unsubtract, MIT license */
-#define _DEFAULT_SOURCE /* needed for DT_DIR */
-#include <dirent.h>
+// TODO: warn for >2GB files
+// TODO: actually test on a big endian host 
+// TODO: windows unicode support
+#ifdef __WIN32__
+#include <fileapi.h>
+#include <handleapi.h>
+#define DIR_FILENAME (FindFileData.cFileName)
+#define IS_DIR (FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 
-#include <stdio.h>
-#include <stdlib.h>
+#else
+#define _DEFAULT_SOURCE /* needed for dirent.d_type, DT_DIR */
+#include <dirent.h>
+#define DIR_FILENAME (ent->d_name)
+#define IS_DIR (ent->d_type == DT_DIR)
+#endif
+
 #include <errno.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "pak.h"
@@ -14,23 +28,46 @@ static FILE *pakfile = NULL;
 static size_t pakptr_header = 0;
 static size_t pakptr_data = 0;
 
+/* https://stackoverflow.com/a/2182184
+ * http://esr.ibiblio.org/?p=5095 */
+static inline uint32_t tolittle(uint32_t n) {
+    return (*(uint16_t *)"\0\xff" < 0x100) ?
+           ((n>>24)&0xff) | ((n<<8)&0xff0000) |
+           ((n>>8)&0xff00) | ((n<<24)&0xff000000) :
+           n;
+}
+
 static size_t recurse_directory(char path[4096], size_t p, size_t ap, char w) {
     size_t count = 0;
 
     FILE *fd;
+    #ifdef __WIN32__
+    WIN32_FIND_DATA FindFileData;
+    strcat(path, "*"); /* gets removed by a strncpy() later on */
+    HANDLE hFind = FindFirstFileA(path, &FindFileData);
+    if (hFind == INVALID_HANDLE_VALUE) {
+        fprintf(stderr, "failed to open folder %s\n", path);
+        exit(EXIT_FAILURE);
+    }
+    #else
     struct dirent *ent;
     DIR *dp = opendir(path);
     if (dp == NULL) {
         fprintf(stderr, "failed to open folder %s: %s\n", path, strerror(errno));
         exit(EXIT_FAILURE);
     }
+    #endif
 
+    #ifdef __WIN32__
+    do {
+    #else
     while ((ent = readdir(dp)) != NULL) {
-        if (!strncmp(ent->d_name, ".", 2)) continue;
-        if (!strncmp(ent->d_name, "..", 3)) continue;
-        strncpy(path + p, ent->d_name, 256);
+    #endif
+        if (!strncmp(DIR_FILENAME, ".", 2)) continue;
+        if (!strncmp(DIR_FILENAME, "..", 3)) continue;
+        strncpy(path + p, DIR_FILENAME, 256);
 
-        if (ent->d_type == DT_DIR) {
+        if (IS_DIR) {
             strcat(path, "/");
             count += recurse_directory(path, strlen(path), ap, w);
         }
@@ -43,23 +80,27 @@ static size_t recurse_directory(char path[4096], size_t p, size_t ap, char w) {
             ++count;
 
             if (w) {
-                fd = fopen(path, "r");
+                fd = fopen(path, "rb");
                 if (fd == NULL) {
+                    #ifdef __WIN32__
+                    fprintf(stderr, "failed to open file %s\nAborting...", path);
+                    #else
                     fprintf(stderr, "failed to open file %s: %s\nAborting...", path, strerror(errno));
+                    #endif
                     exit(EXIT_FAILURE);
                 } else {
                     file_header fh;
                     int c;
                     size_t len = 0;
                     fseek(pakfile, pakptr_data, SEEK_SET);
-                    fh.offset = pakptr_data;
+                    fh.offset = tolittle(pakptr_data);
                     while ((c = getc(fd)) != EOF) {
                         putc(c, pakfile);
                         ++len;
                     }
                     fclose(fd);
                     pakptr_data += len;
-                    fh.size = len;
+                    fh.size = tolittle(len);
                     strncpy((char*)fh.name, path + ap, sizeof(fh.name));
                     fseek(pakfile, pakptr_header, SEEK_SET);
                     fwrite(&fh, FILE_HEADER_SZ, 1, pakfile);
@@ -67,8 +108,13 @@ static size_t recurse_directory(char path[4096], size_t p, size_t ap, char w) {
                 }
             }
         }
+    #ifdef __WIN32__
+    } while (FindNextFileA(hFind, &FindFileData));
+    FindClose(hFind);
+    #else
     }
     closedir(dp);
+    #endif
     return count;
 }
 
@@ -88,8 +134,12 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    pak_header h = {.magic = {'P', 'A', 'C', 'K'}, .offset = PAK_HEADER_SZ};
-    h.size = enter_directory(argv[1], buf, 0) * FILE_HEADER_SZ;
+    size_t file_table_size = enter_directory(argv[1], buf, 0) * FILE_HEADER_SZ;
+    pak_header h = {
+        .magic = {'P', 'A', 'C', 'K'}, 
+        .offset = tolittle(PAK_HEADER_SZ),
+        .size = tolittle(file_table_size)
+    };
 
     pakfile = fopen(argv[2], "wb");
     if (pakfile == NULL) {
@@ -99,8 +149,8 @@ int main(int argc, char *argv[]) {
 
     fwrite(&h, PAK_HEADER_SZ, 1, pakfile);
 
-    pakptr_header = h.offset;
-    pakptr_data = PAK_HEADER_SZ+h.size;
+    pakptr_header = PAK_HEADER_SZ;
+    pakptr_data = PAK_HEADER_SZ+file_table_size;
 
     enter_directory(argv[1], buf, 1);
 
