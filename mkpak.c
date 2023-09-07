@@ -3,9 +3,10 @@
 // TODO: warn for >2GB files
 // TODO: actually test on a big endian host 
 // TODO: windows unicode support
-#ifdef __WIN32__
-#include <fileapi.h>
-#include <handleapi.h>
+// TODO: ensure structs don't get padded (manually write out each element)
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
 #define DIR_FILENAME (FindFileData.cFileName)
 #define IS_DIR (FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 
@@ -41,7 +42,7 @@ static size_t recurse_directory(char path[4096], size_t p, size_t ap, char w) {
     size_t count = 0;
 
     FILE *fd;
-    #ifdef __WIN32__
+    #ifdef _WIN32
     WIN32_FIND_DATA FindFileData;
     strcat(path, "*"); /* gets removed by a strncpy() later on */
     HANDLE hFind = FindFirstFileA(path, &FindFileData);
@@ -58,7 +59,7 @@ static size_t recurse_directory(char path[4096], size_t p, size_t ap, char w) {
     }
     #endif
 
-    #ifdef __WIN32__
+    #ifdef _WIN32
     do {
     #else
     while ((ent = readdir(dp)) != NULL) {
@@ -82,7 +83,7 @@ static size_t recurse_directory(char path[4096], size_t p, size_t ap, char w) {
             if (w) {
                 fd = fopen(path, "rb");
                 if (fd == NULL) {
-                    #ifdef __WIN32__
+                    #ifdef _WIN32
                     fprintf(stderr, "failed to open file %s\nAborting...", path);
                     #else
                     fprintf(stderr, "failed to open file %s: %s\nAborting...", path, strerror(errno));
@@ -108,7 +109,7 @@ static size_t recurse_directory(char path[4096], size_t p, size_t ap, char w) {
                 }
             }
         }
-    #ifdef __WIN32__
+    #ifdef _WIN32
     } while (FindNextFileA(hFind, &FindFileData));
     FindClose(hFind);
     #else
