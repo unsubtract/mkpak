@@ -1,6 +1,6 @@
-# CC = x86_64-w64-mingw32-gcc-win32
-CFLAGS = -Wall -Wextra -Wpedantic --std=c99 -g3 -fsanitize=address
-all: mkpak unpak 
+CFLAGS = -pipe -Og -Wall -Wextra -Wpedantic --std=c99 -g3 -fsanitize=address -fsanitize=undefined
+# CFLAGS = -pipe -flto -O2 -s -Wall -Wextra -Wpedantic --std=c99
+all: mkpak unpak
 
 clean:
 	rm -f mkpak unpak *.exe

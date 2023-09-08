@@ -1,9 +1,7 @@
 /* mkpak.c - make Quake PAK archives
  * by unsubtract, MIT license */
 // TODO: warn for >2GB files
-// TODO: actually test on a big endian host 
 // TODO: windows unicode support
-// TODO: ensure structs don't get padded (manually write out each element)
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -11,10 +9,10 @@
 #define IS_DIR (FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 
 #else
-#define _DEFAULT_SOURCE /* needed for dirent.d_type, DT_DIR */
 #include <dirent.h>
+#include <sys/stat.h>
 #define DIR_FILENAME (ent->d_name)
-#define IS_DIR (ent->d_type == DT_DIR)
+#define IS_DIR (S_ISDIR(st.st_mode))
 #endif
 
 #include <errno.h>
@@ -51,6 +49,7 @@ static size_t recurse_directory(char path[4096], size_t p, size_t ap, char w) {
         exit(EXIT_FAILURE);
     }
     #else
+    struct stat st;
     struct dirent *ent;
     DIR *dp = opendir(path);
     if (dp == NULL) {
@@ -67,6 +66,12 @@ static size_t recurse_directory(char path[4096], size_t p, size_t ap, char w) {
         if (!strncmp(DIR_FILENAME, ".", 2)) continue;
         if (!strncmp(DIR_FILENAME, "..", 3)) continue;
         strncpy(path + p, DIR_FILENAME, 256);
+        #ifndef _WIN32
+        if (stat(path, &st) < 0) {
+            fprintf(stderr, "failed to stat %s: %s\n", path, strerror(errno));
+            exit(EXIT_FAILURE);
+        }
+        #endif
 
         if (IS_DIR) {
             strcat(path, "/");
@@ -102,7 +107,7 @@ static size_t recurse_directory(char path[4096], size_t p, size_t ap, char w) {
                     fclose(fd);
                     pakptr_data += len;
                     fh.size = tolittle(len);
-                    strncpy((char*)fh.name, path + ap, sizeof(fh.name));
+                    strncpy((char*)fh.name, path + ap, sizeof(fh.name) - 1);
                     fseek(pakfile, pakptr_header, SEEK_SET);
                     fwrite(&fh, FILE_HEADER_SZ, 1, pakfile);
                     pakptr_header += FILE_HEADER_SZ;
