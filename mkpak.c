@@ -29,7 +29,7 @@ static size_t pakptr_data = 0;
 
 /* https://stackoverflow.com/a/2182184
  * http://esr.ibiblio.org/?p=5095 */
-static inline uint32_t tolittle(uint32_t n) {
+static inline uint32_t htol(uint32_t n) {
     return (*(uint16_t *)"\0\xff" < 0x100) ?
            ((n>>24)&0xff) | ((n<<8)&0xff0000) |
            ((n>>8)&0xff00) | ((n<<24)&0xff000000) :
@@ -98,19 +98,21 @@ static size_t recurse_directory(char path[4096], size_t p, size_t ap, char w) {
                     file_header fh;
                     int c;
                     size_t len = 0;
+                    fputs(path + ap, stdout);
                     fseek(pakfile, pakptr_data, SEEK_SET);
-                    fh.offset = tolittle(pakptr_data);
+                    fh.offset = htol(pakptr_data);
                     while ((c = getc(fd)) != EOF) {
                         putc(c, pakfile);
                         ++len;
                     }
                     fclose(fd);
                     pakptr_data += len;
-                    fh.size = tolittle(len);
+                    fh.size = htol(len);
                     strncpy((char*)fh.name, path + ap, sizeof(fh.name) - 1);
                     fseek(pakfile, pakptr_header, SEEK_SET);
                     fwrite(&fh, FILE_HEADER_SZ, 1, pakfile);
                     pakptr_header += FILE_HEADER_SZ;
+                    printf(" (%zu bytes)\n", len);
                 }
             }
         }
@@ -143,8 +145,8 @@ int main(int argc, char *argv[]) {
     size_t file_table_size = enter_directory(argv[1], buf, 0) * FILE_HEADER_SZ;
     pak_header h = {
         .magic = {'P', 'A', 'C', 'K'}, 
-        .offset = tolittle(PAK_HEADER_SZ),
-        .size = tolittle(file_table_size)
+        .offset = htol(PAK_HEADER_SZ),
+        .size = htol(file_table_size)
     };
 
     pakfile = fopen(argv[2], "wb");
