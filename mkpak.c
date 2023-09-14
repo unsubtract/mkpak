@@ -3,6 +3,7 @@
 // TODO: warn for >2GB files
 // TODO: windows unicode support
 #ifdef _WIN32
+#define _CRT_SECURE_NO_WARNINGS
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #define DIR_FILENAME (FindFileData.cFileName)
@@ -35,14 +36,15 @@ static inline uint32_t htol(uint32_t n) {
 
 static size_t recurse_directory(char path[4096], size_t p, size_t ap, char w) {
     size_t count = 0;
-
     FILE *fd;
+    file_header fh;
+
     #ifdef _WIN32
     WIN32_FIND_DATA FindFileData;
     strcat(path, "*"); /* gets removed by a strncpy() later on */
     HANDLE hFind = FindFirstFileA(path, &FindFileData);
     if (hFind == INVALID_HANDLE_VALUE) {
-        fprintf(stderr, "failed to open folder %s\n", path);
+        fprintf(stderr, "failed to open directory %s\nAborting...\n", path);
         exit(EXIT_FAILURE);
     }
     #else
@@ -50,7 +52,8 @@ static size_t recurse_directory(char path[4096], size_t p, size_t ap, char w) {
     struct dirent *ent;
     DIR *dp = opendir(path);
     if (dp == NULL) {
-        fprintf(stderr, "failed to open folder %s: %s\n", path, strerror(errno));
+        fprintf(stderr, "failed to open directory %s: %s\nAborting...\n",
+                path, strerror(errno));
         exit(EXIT_FAILURE);
     }
     #endif
@@ -60,12 +63,22 @@ static size_t recurse_directory(char path[4096], size_t p, size_t ap, char w) {
     #else
     while ((ent = readdir(dp)) != NULL) {
     #endif
+
         if (!strncmp(DIR_FILENAME, ".", 2)) continue;
         if (!strncmp(DIR_FILENAME, "..", 3)) continue;
         strncpy(path + p, DIR_FILENAME, 256);
+
+        if (strlen(path + ap) > sizeof(fh.name)-1) {
+            fprintf(stderr,
+                    "path %s is too long (maximum %zu)\nAborting...\n",
+                    path + ap, sizeof(fh.name)-1);
+            exit(EXIT_FAILURE);
+        }
+
         #ifndef _WIN32
         if (stat(path, &st)) {
-            fprintf(stderr, "failed to stat %s: %s\n", path, strerror(errno));
+            fprintf(stderr, "failed to stat %s: %s\nAborting...\n",
+                    path, strerror(errno));
             exit(EXIT_FAILURE);
         }
         #endif
@@ -73,46 +86,37 @@ static size_t recurse_directory(char path[4096], size_t p, size_t ap, char w) {
         if (IS_DIR) {
             strcat(path, "/");
             count += recurse_directory(path, strlen(path), ap, w);
+            continue;
         }
 
-        else {
-            if (strlen(path + ap) > sizeof(((file_header*)0)->name) - 1) {
-                fprintf(stderr, "file %s has too long of a path name\n", path + ap);
+        ++count;
+
+        if (w) {
+            size_t len = 0;
+            fd = fopen(path, "rb");
+            if (fd == NULL) {
+                fprintf(stderr, "failed to open file %s: %s\nAborting...\n",
+                        path, strerror(errno));
                 exit(EXIT_FAILURE);
             }
-            ++count;
-
-            if (w) {
-                fd = fopen(path, "rb");
-                if (fd == NULL) {
-                    fprintf(stderr, "failed to open file %s: %s\nAborting...", path, strerror(errno));
-                    exit(EXIT_FAILURE);
-                } else {
-                    file_header fh;
-                    int c;
-                    size_t len = 0;
-                    fputs(path + ap, stdout);
-                    fseek(pakfile, pakptr_data, SEEK_SET);
-                    fh.offset = htol(pakptr_data);
-                    while ((c = getc(fd)) != EOF) {
-                        putc(c, pakfile);
-                        ++len;
-                    }
-                    fclose(fd);
-                    pakptr_data += len;
-                    fh.size = htol(len);
-                    strncpy((char*)fh.name, path + ap, sizeof(fh.name) - 1);
-                    fseek(pakfile, pakptr_header, SEEK_SET);
-                    fwrite(&fh, FILE_HEADER_SZ, 1, pakfile);
-                    pakptr_header += FILE_HEADER_SZ;
-                    printf(" (%zu bytes)\n", len);
-                }
-            }
+            fputs(path + ap, stdout);
+            fseek(pakfile, pakptr_data, SEEK_SET);
+            fh.offset = htol(pakptr_data);
+            for (int c; (c = getc(fd)) != EOF; ++len) putc(c, pakfile);
+            fclose(fd);
+            pakptr_data += len;
+            fh.size = htol(len);
+            strncpy((char*)fh.name, path + ap, sizeof(fh.name) - 1);
+            fseek(pakfile, pakptr_header, SEEK_SET);
+            fwrite(&fh, FILE_HEADER_SZ, 1, pakfile);
+            pakptr_header += FILE_HEADER_SZ;
+            printf(" (%zu bytes)\n", len);
         }
-    #ifdef _WIN32
+
+    #ifdef _WIN32 /* close do-while loop */
     } while (FindNextFileA(hFind, &FindFileData));
     FindClose(hFind);
-    #else
+    #else /* close while loop */
     }
     closedir(dp);
     #endif

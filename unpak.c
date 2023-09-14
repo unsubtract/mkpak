@@ -3,6 +3,7 @@
 // TODO: windows support
 // TODO: windows unicode support
 #ifdef _WIN32
+#define _CRT_SECURE_NO_WARNINGS
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
@@ -88,7 +89,7 @@ int main(int argc, char *argv[]) {
         reopen_file:
         if ((fd = fopen(path, "wb")) == NULL) {
             if (errno == ENOENT) {
-                mkdir_p(path)
+                mkdir_p(path);
                 goto reopen_file;
             }
             fprintf(stderr, "failed to open %s: %s\n"\
