@@ -11,3 +11,9 @@ The input directory will become the output file's root directory.
 
 ## unpak:
 work in progress, not currently functional
+
+Extract files from a PAK archive into a directory
+```
+usage: unpak [input file] [output directory]
+The input file's root directory will become the output directory.
+```

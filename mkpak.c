@@ -27,13 +27,10 @@ static FILE *pakfile = NULL;
 static size_t pakptr_header = 0;
 static size_t pakptr_data = 0;
 
-/* https://stackoverflow.com/a/2182184
- * http://esr.ibiblio.org/?p=5095 */
 static inline uint32_t htol(uint32_t n) {
-    return (*(uint16_t *)"\0\xff" < 0x100) ?
-           ((n>>24)&0xff) | ((n<<8)&0xff0000) |
-           ((n>>8)&0xff00) | ((n<<24)&0xff000000) :
-           n;
+    return (union {int x; char c;}){1}.c ? n :
+           ((n>>24)&0xFF) | ((n<<8)&0xFF0000) |
+           ((n>>8)&0xFF00) | ((n<<24)&0xFF000000);
 }
 
 static size_t recurse_directory(char path[4096], size_t p, size_t ap, char w) {
@@ -67,7 +64,7 @@ static size_t recurse_directory(char path[4096], size_t p, size_t ap, char w) {
         if (!strncmp(DIR_FILENAME, "..", 3)) continue;
         strncpy(path + p, DIR_FILENAME, 256);
         #ifndef _WIN32
-        if (stat(path, &st) < 0) {
+        if (stat(path, &st)) {
             fprintf(stderr, "failed to stat %s: %s\n", path, strerror(errno));
             exit(EXIT_FAILURE);
         }
@@ -88,11 +85,7 @@ static size_t recurse_directory(char path[4096], size_t p, size_t ap, char w) {
             if (w) {
                 fd = fopen(path, "rb");
                 if (fd == NULL) {
-                    #ifdef _WIN32
-                    fprintf(stderr, "failed to open file %s\nAborting...", path);
-                    #else
                     fprintf(stderr, "failed to open file %s: %s\nAborting...", path, strerror(errno));
-                    #endif
                     exit(EXIT_FAILURE);
                 } else {
                     file_header fh;
