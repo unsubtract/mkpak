@@ -3,7 +3,6 @@
 // TODO: windows support
 // TODO: windows unicode support
 #ifdef _WIN32
-#define _CRT_SECURE_NO_WARNINGS
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
@@ -11,6 +10,7 @@
 #include <sys/stat.h>
 #endif
 
+#include <assert.h>
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -45,6 +45,10 @@ static int mkdir_p(char* path) {
 }
 
 int main(int argc, char *argv[]) {
+    /* catch any possible struct padding */
+    assert(sizeof(pak_header) == PAK_HEADER_SZ);
+    assert(sizeof(file_header) == FILE_HEADER_SZ);
+
     char path[4096];
     size_t path_p = 0;
     FILE *pakfile = NULL;
@@ -67,9 +71,9 @@ int main(int argc, char *argv[]) {
     }
 
     pak_header h;
-    fread(&h, 1, PAK_HEADER_SZ, pakfile);
+    fread(&h, 1, sizeof(pak_header), pakfile);
     h.offset = pakptr_header = ltoh(h.offset), h.size = ltoh(h.size);
-    if (memcmp(h.magic, "PACK", 4) || h.size % FILE_HEADER_SZ != 0) {
+    if (memcmp(h.magic, "PACK", 4) || h.size % sizeof(file_header) != 0) {
         fprintf(stderr, "%s is not a PAK file\n", argv[1]);
         exit(EXIT_FAILURE);
     }
@@ -80,7 +84,7 @@ int main(int argc, char *argv[]) {
         size_t len = 0;
         int c;
         fseek(pakfile, pakptr_header, SEEK_SET);
-        fread(&fh, 1, FILE_HEADER_SZ, pakfile);
+        fread(&fh, 1, sizeof(file_header), pakfile);
         pakptr_header = ftell(pakfile);
         fh.offset = ltoh(fh.offset), fh.size = ltoh(fh.size);
 
