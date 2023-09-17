@@ -1,6 +1,5 @@
 /* mkpak.c - make Quake PAK archives
  * by unsubtract, MIT license */
-// TODO: warn for >2GB files
 // TODO: windows unicode support
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -45,7 +44,7 @@ static inline uint32_t htol(uint32_t n) {
 }
 
 static int write_entry(pathbuf* pb) {
-    size_t len = 0;
+    size_t start_p = pakptr_data;
     file_header fh = {0};
     FILE *fd = fopen(pb->buf, "rb");
     if (fd == NULL) {
@@ -57,17 +56,22 @@ static int write_entry(pathbuf* pb) {
 
     fseek(pakfile, pakptr_data, SEEK_SET);
     fh.offset = htol(pakptr_data);
-    for (int c; (c = getc(fd)) != EOF; ++len) putc(c, pakfile);
+    for (int c; (c = getc(fd)) != EOF; ++pakptr_data) {
+        if (pakptr_data >= 2147483647) {
+            fputs("error: archive has exceeded 2 GiB limit\n", stderr);
+            return -1;
+        }
+        putc(c, pakfile);
+    }
     fclose(fd);
-    pakptr_data += len;
 
-    fh.size = htol(len);
+    fh.size = htol(pakptr_data - start_p);
     strncpy((char*)fh.name, pb->buf + pb->p, sizeof(fh.name)-1);
     fseek(pakfile, pakptr_header, SEEK_SET);
     fwrite(&fh, sizeof(file_header), 1, pakfile);
     pakptr_header += sizeof(file_header);
 
-    printf(" (%zu bytes)\n", len);
+    printf(" (%zu bytes)\n", pakptr_data - start_p);
     return 0;
 }
 
