@@ -2,6 +2,10 @@
 
 ---
 
+### Features:
+- Native support for both POSIX and Win32
+- Support for Big Endian systems (PowerPC, m68k, SPARC, etc.)
+
 ## mkpak:
 Create a PAK archive from a directory
 ```
@@ -10,8 +14,6 @@ The input directory will become the output file's root directory.
 ```
 
 ## unpak:
-work in progress, not currently functional
-
 Extract files from a PAK archive into a directory
 ```
 usage: unpak [input file] [output directory]

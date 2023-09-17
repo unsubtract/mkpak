@@ -1,7 +1,7 @@
 /* unpak.c - extract files from Quake PAK archives
  * by unsubtract, MIT license */
-// TODO: windows support
 // TODO: windows unicode support
+
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -26,14 +26,17 @@ static inline uint32_t ltoh(uint32_t n) {
 }
 
 static int mkdir_p(char* path) {
-    #ifdef _WIN32
-    fputs("win32 not yet supported\n", stderr);
-    return 1;
-    #else
+#ifdef _WIN32
+    for (char *p = strpbrk(path + 1, "/\\"); p; p = strpbrk(p + 1, "/\\")) {
+        *p = '\0';
+        if (!CreateDirectoryA(path, NULL)) {
+            if (GetLastError() != ERROR_ALREADY_EXISTS) {
+#else
     for (char *p = strchr(path + 1, '/'); p; p = strchr(p + 1, '/')) {
         *p = '\0';
         if (mkdir(path, S_IRWXU)) {
             if (errno != EEXIST) {
+#endif
                 *p = '/';
                 return errno;
             }
@@ -41,7 +44,6 @@ static int mkdir_p(char* path) {
         *p = '/';
     }
     return 0;
-    #endif
 }
 
 int main(int argc, char *argv[]) {
