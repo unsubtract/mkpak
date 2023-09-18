@@ -19,6 +19,9 @@
 
 #include "pak.h"
 
+static inline uint32_t ltoh(uint32_t n);
+static int mkdir_p(char* path);
+
 static inline uint32_t ltoh(uint32_t n) {
     return (union {int x; char c;}){1}.c ? n :
            ((n>>24)&0xFF) | ((n<<8)&0xFF0000) |
@@ -83,8 +86,9 @@ int main(int argc, char *argv[]) {
     file_header fh;
     FILE *fd;
     while (pakptr_header < h.offset + h.size) {
-        size_t len = 0;
-        int c;
+        uint8_t buf[4096];
+        size_t total = 0;
+
         fseek(pakfile, pakptr_header, SEEK_SET);
         fread(&fh, 1, sizeof(file_header), pakfile);
         pakptr_header = ftell(pakfile);
@@ -102,13 +106,16 @@ int main(int argc, char *argv[]) {
                             "skipping file...\n", path, strerror(errno));
             continue;
         }
+
         fputs((char*)fh.name, stdout);
         fseek(pakfile, fh.offset, SEEK_SET);
-        while (len < fh.size && (c = getc(pakfile)) != EOF) {
-            putc(c, fd);
-            ++len;
+        while (total < fh.size && !feof(pakfile)) {
+            size_t n = fread(buf, 1, fh.size - total > sizeof(buf) ?
+                             sizeof(buf) : fh.size - total, pakfile);
+            fwrite(buf, 1, n, fd);
+            total += n;
         }
-        printf(" (%zu bytes)\n", len);
+        printf(" (%zu bytes)\n", total);
     }
 
     fclose(pakfile);
