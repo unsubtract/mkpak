@@ -1,10 +1,18 @@
-<h1 align="center">Implementation of the <a href="https://quakewiki.org/wiki/.pak">Quake PAK archive format</a></h1>
+<h2 align="center">Implementation of the <a href="https://quakewiki.org/wiki/.pak">Quake PAK archive format</a></h2>
 
 ---
 
 ### Features:
 - Native support for both POSIX and Win32
-- Support for Big Endian systems (PowerPC, m68k, SPARC, etc.)
+- Quite fast and extremely small
+- Support for big endian systems (PowerPC, m68k, SPARC, etc.)
+- Uses MIT License
+
+### Building:
+```sh
+make
+```
+Or manually manually compile `mkpak.c` for mkpak and `unpak.c` for unpak.
 
 ## mkpak:
 Create a PAK archive from a directory

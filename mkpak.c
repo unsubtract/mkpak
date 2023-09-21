@@ -35,8 +35,8 @@ typedef struct {
 
 static inline uint32_t htol(uint32_t n);
 static int write_entry(pathbuf* pb);
-static size_t recurse_directory(pathbuf* pb, char w);
-static size_t enter_directory(char* path, char should_write);
+static size_t recurse_directory(pathbuf* pb, int w);
+static size_t enter_directory(char* path, int should_write);
 
 static inline uint32_t htol(uint32_t n) {
     return (union {int x; char c;}){1}.c ? n :
@@ -77,7 +77,7 @@ static int write_entry(pathbuf* pb) {
     return 0;
 }
 
-static size_t recurse_directory(pathbuf* pb, char w) {
+static size_t recurse_directory(pathbuf* pb, int w) {
     size_t count = 0;
     size_t path_base = strlen(pb->buf);
 
@@ -150,7 +150,7 @@ static size_t recurse_directory(pathbuf* pb, char w) {
     return count;
 }
 
-static size_t enter_directory(char* path, char should_write) {
+static size_t enter_directory(char* path, int should_write) {
     pathbuf pb;
     strncpy(pb.buf, path, 2048);
     strcat(pb.buf, "/");

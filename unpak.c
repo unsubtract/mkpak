@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
     fread(&h, 1, sizeof(pak_header), pakfile);
     h.offset = pakptr_header = ltoh(h.offset), h.size = ltoh(h.size);
     if (memcmp(h.magic, "PACK", 4) || h.size % sizeof(file_header) != 0) {
-        fprintf(stderr, "%s is not a PAK file\n", argv[1]);
+        fprintf(stderr, "%s is not a valid PAK file\n", argv[1]);
         exit(EXIT_FAILURE);
     }
 
