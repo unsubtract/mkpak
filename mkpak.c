@@ -165,8 +165,8 @@ int main(int argc, char *argv[]) {
     assert(sizeof(file_header) == FILE_HEADER_SZ);
 
     if (argc != 3) {
-        fprintf(stderr, "usage: %s [input directory] [output file]\n"\
-                "The input directory will become the output file's root directory.\n",
+        fprintf(stderr, "usage: %s INPUT_DIRECTORY ARCHIVE\n"\
+                "INPUT_DIRECTORY will become the root directory of ARCHIVE\n",
                 argv[0]);
         exit(EXIT_FAILURE);
     }

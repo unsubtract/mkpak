@@ -17,13 +17,13 @@ Or manually manually compile `mkpak.c` for mkpak and `unpak.c` for unpak.
 ## mkpak:
 Create a PAK archive from a directory
 ```
-usage: mkpak [input directory] [output file]
-The input directory will become the output file's root directory.
+usage: mkpak INPUT_DIRECTORY ARCHIVE
+INPUT_DIRECTORY will become the root directory of ARCHIVE
 ```
 
 ## unpak:
 Extract files from a PAK archive into a directory
 ```
-usage: unpak [input file] [output directory]
-The input file's root directory will become the output directory.
+usage: unpak ARCHIVE OUTPUT_DIRECTORY
+the root directory of ARCHIVE will become OUTPUT_DIRECTORY
 ```
