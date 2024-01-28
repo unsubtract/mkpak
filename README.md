@@ -12,18 +12,17 @@
 ```sh
 make
 ```
-Or manually manually compile `mkpak.c` for mkpak and `unpak.c` for unpak.
 
 ## mkpak:
 Create a PAK archive from a directory
 ```
-usage: mkpak INPUT_DIRECTORY ARCHIVE
-INPUT_DIRECTORY will become the root directory of ARCHIVE
+usage: mkpak [input directory] [output archive]
+[input directory] will become the root of [output archive]
 ```
 
 ## unpak:
 Extract files from a PAK archive into a directory
 ```
-usage: unpak ARCHIVE OUTPUT_DIRECTORY
-the root directory of ARCHIVE will become OUTPUT_DIRECTORY
+usage: unpak [input archive] [output directory]
+the root of [input archive] will become [output directory]
 ```

@@ -60,8 +60,8 @@ int main(int argc, char *argv[]) {
     size_t pakptr_header = 0;
 
     if (argc != 3) {
-        fprintf(stderr, "usage: %s ARCHIVE OUTPUT_DIRECTORY\n"\
-                "the root directory of ARCHIVE will become OUTPUT_DIRECTORY\n",
+        fprintf(stderr, "usage: %s [input archive] [output directory]\n"\
+                "the root of [input archive] will become [output directory]\n",
                 argv[0]);
         exit(EXIT_FAILURE);
     }
